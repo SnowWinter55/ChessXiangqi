@@ -19,6 +19,14 @@ namespace ChessXiangqiSolution.Modules.Notation
             if (piece == null)
                 return "???";
 
+            if (board.GameType == GameType.Xiangqi)
+            {
+                string from = move.From.ToXiangqiCoord();
+                string to = move.To.ToXiangqiCoord();
+                string xiangqiCapture = move.CapturedPiece != null ? "x" : "-";
+                return $"{from}{xiangqiCapture}{to}";
+            }
+
             string pieceChar = piece.Type switch
             {
                 PieceType.King => "K",

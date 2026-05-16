@@ -3,7 +3,7 @@ using System;
 using System.Text;
 using ChessXiangqiSolution.Core.Interfaces;
 using ChessXiangqiSolution.Core.Models.Chess;
-// using ChessXiangqiSolution.Core.Models.Xiangqi; // sẽ dùng sau, file rỗng nên không comment nó sẽ lỗi
+using ChessXiangqiSolution.Core.Models.Xiangqi;
 using ChessXiangqiSolution.UI;
 
 namespace ChessXiangqiSolution
@@ -24,13 +24,8 @@ namespace ChessXiangqiSolution
                     validator = new ChessMoveValidator();
                     break;
                 case GameSelection.Xiangqi:
-                    // TODO: Khi implement xong, bỏ comment
-                    // board = new XiangqiBoard();
-                    // validator = new XiangqiMoveValidator();
-                    Console.WriteLine("Cờ tướng chưa được implement, tạm dùng cờ vua.");
-                    board = new ChessBoard();
-                    validator = new ChessMoveValidator();
-                    Console.ReadKey();
+                    board = new XiangqiBoard();
+                    validator = new XiangqiMoveValidator();
                     break;
                 default:
                     board = new ChessBoard();

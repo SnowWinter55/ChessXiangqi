@@ -34,8 +34,8 @@ namespace ChessXiangqiSolution.Modules.Movement
 
             input = input.Trim();
 
-            // Thử parse dạng tọa độ "e2e4"
-            if (TryParseCoordinate(input, out move))
+            // Thử parse dạng tọa độ
+            if (TryParseCoordinate(input, board, out move))
                 return true;
 
             // Thử parse dạng SAN
@@ -45,16 +45,34 @@ namespace ChessXiangqiSolution.Modules.Movement
             return false;
         }
 
-        private static bool TryParseCoordinate(string input, out Move move)
+        private static bool TryParseCoordinate(string input, IBoard board, out Move move)
         {
             move = null;
-            if (input.Length != 4) return false;
+            if (board.GameType == GameType.Chess)
+            {
+                if (input.Length != 4) return false;
+                try
+                {
+                    string fromStr = input.Substring(0, 2);
+                    string toStr = input.Substring(2, 2);
+                    Position from = Position.FromChessAlgebraic(fromStr);
+                    Position to = Position.FromChessAlgebraic(toStr);
+                    move = new Move(from, to);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            var match = Regex.Match(input, @"^(\d{1,2},\d{1,2})\s*[-\s]\s*(\d{1,2},\d{1,2})$");
+            if (!match.Success) return false;
+
             try
             {
-                string fromStr = input.Substring(0, 2);
-                string toStr = input.Substring(2, 2);
-                Position from = Position.FromChessAlgebraic(fromStr);
-                Position to = Position.FromChessAlgebraic(toStr);
+                var from = Position.FromXiangqiCoord(match.Groups[1].Value);
+                var to = Position.FromXiangqiCoord(match.Groups[2].Value);
                 move = new Move(from, to);
                 return true;
             }

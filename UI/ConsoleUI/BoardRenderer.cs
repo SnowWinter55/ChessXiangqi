@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ChessXiangqiSolution.Core.Enums;
 using ChessXiangqiSolution.Core.Interfaces;
 using ChessXiangqiSolution.Core.Models.Common;
@@ -17,11 +18,22 @@ namespace ChessXiangqiSolution.UI.ConsoleUI
             Console.Clear();
             Console.WriteLine($"Lượt: {(currentTurn == Color.White ? "Trắng" : "Đen")}   🕒 Trắng: {FormatTime(whiteTime)}  Đen: {FormatTime(blackTime)}\n");
 
-            // Vẽ bàn cờ
-            for (int r = 0; r < 8; r++)
+            RenderBoard(board);
+            RenderMoveHistory(moveHistorySAN);
+        }
+
+        private void RenderBoard(IBoard board)
+        {
+            int rows = board.Rows;
+            int cols = board.Cols;
+            bool isChess = board.GameType == GameType.Chess;
+
+            for (int r = 0; r < rows; r++)
             {
-                Console.Write($"{8 - r}  ");
-                for (int c = 0; c < 8; c++)
+                string rankLabel = isChess ? (8 - r).ToString() : (rows - r).ToString();
+                Console.Write($"{rankLabel,-3}");
+
+                for (int c = 0; c < cols; c++)
                 {
                     var piece = board.GetPieceAt(new Position(r, c));
                     string symbol = GetPieceSymbol(piece);
@@ -31,16 +43,26 @@ namespace ChessXiangqiSolution.UI.ConsoleUI
                     Console.Write($" {symbol}  ");
                     Console.ResetColor();
                 }
-                Console.WriteLine($" {8 - r}");
-            }
-            Console.Write("   ");
-            for (char c = 'a'; c <= 'h'; c++) Console.Write($" {c}  ");
-            Console.WriteLine("\n");
 
-            // In lịch sử nước đi
+                Console.WriteLine($" {rankLabel}");
+            }
+
+            Console.Write("   ");
+            for (int c = 0; c < cols; c++)
+            {
+                string fileLabel = isChess ? ((char)('a' + c)).ToString() : (c + 1).ToString();
+                Console.Write($" {fileLabel}  ");
+            }
+            Console.WriteLine("\n");
+        }
+
+        private void RenderMoveHistory(List<string> moveHistorySAN)
+        {
             Console.WriteLine("--- Lịch sử nước đi ---");
-            if (moveHistorySAN.Count == 0)
+            if (moveHistorySAN == null || moveHistorySAN.Count == 0)
+            {
                 Console.WriteLine("(chưa có nước nào)");
+            }
             else
             {
                 for (int i = 0; i < moveHistorySAN.Count; i++)
@@ -68,6 +90,13 @@ namespace ChessXiangqiSolution.UI.ConsoleUI
                 PieceType.Bishop => "♗",
                 PieceType.Queen => "♕",
                 PieceType.King => "♔",
+                PieceType.Soldier => "兵",
+                PieceType.Cannon => "炮",
+                PieceType.Chariot => "車",
+                PieceType.Horse => "馬",
+                PieceType.Elephant => "象",
+                PieceType.Advisor => "士",
+                PieceType.General => "帥",
                 _ => "?"
             };
         }

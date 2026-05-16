@@ -51,8 +51,17 @@ namespace ChessXiangqiSolution.UI
         public void Run()
         {
             System.Console.Clear();
-            System.Console.WriteLine("=== CHESS GAME (Console) ===");
-            System.Console.WriteLine("Nhập nước đi định dạng SAN hoặc tọa độ");
+            System.Console.Clear();
+            if (_board.GameType == GameType.Xiangqi)
+            {
+                System.Console.WriteLine("=== XIANGQI GAME (Console) ===");
+                System.Console.WriteLine("Nhập nước đi định dạng tọa độ (cột 1-9, hàng 1-10)");
+            }
+            else
+            {
+                System.Console.WriteLine("=== CHESS GAME (Console) ===");
+                System.Console.WriteLine("Nhập nước đi định dạng SAN hoặc tọa độ");
+            }
             System.Console.WriteLine("Gõ 'quit' để thoát, 'undo' (Ctrl+Z), 'redo' (Ctrl+Y), 'moves' để xem lịch sử");
             System.Console.WriteLine("Gõ 'branch' để xem các nhánh rẽ có thể tại thế cờ hiện tại.\n");
 
