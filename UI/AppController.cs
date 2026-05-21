@@ -62,7 +62,7 @@ namespace ChessXiangqiSolution.UI
                 System.Console.WriteLine("Nhập nước đi định dạng SAN hoặc tọa độ");
             }
             System.Console.WriteLine("Gõ 'quit' để thoát, 'undo' (Ctrl+Z), 'redo' (Ctrl+Y), 'moves' để xem lịch sử");
-            System.Console.WriteLine("Gõ 'branch' để xem các nhánh rẽ có thể tại thế cờ hiện tại.\n");
+            System.Console.WriteLine("Gõ 'branch' để xem các nhánh rẽ, Backspace (khi input rỗng) để quay về menu.\n");
 
             _clock.StartTurn(_currentTurn);
 
@@ -75,6 +75,12 @@ namespace ChessXiangqiSolution.UI
 
                 string input = _inputHandler.GetCommandOrMove();
                 if (input == "quit") break;
+                if (input == "menu")
+                {
+                    System.Console.WriteLine("\nQuay lại menu chính...");
+                    Thread.Sleep(1000);
+                    break;
+                }
                 if (input == "undo") { PerformUndo(); continue; }
                 if (input == "redo") { PerformRedo(); continue; }
                 if (input == "moves") { ShowMoveHistory(); continue; }
