@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using ChessXiangqiSolution.Core.Enums;
 using ChessXiangqiSolution.Core.Interfaces;
@@ -13,9 +14,10 @@ namespace ChessXiangqiSolution.UI.ConsoleUI
         private readonly ConsoleColor _darkSquareBg = ConsoleColor.DarkBlue;
 
         // Màu nền cho cờ tướng
-        private readonly ConsoleColor _xiangqiNormalBg = ConsoleColor.DarkGray;   // nền ô thường
-        private readonly ConsoleColor _palaceBg = ConsoleColor.DarkYellow;        // nền cung thành
-        private readonly ConsoleColor _riverBg = ConsoleColor.DarkBlue;           // nền dòng sông
+        private readonly ConsoleColor _xiangqiBg1 = ConsoleColor.DarkGray;   // nền ô thường
+        private readonly ConsoleColor _xiangqiBg2 = ConsoleColor.Gray;      // nền ô thường xen kẽ
+        private readonly ConsoleColor _palaceBg = ConsoleColor.Red;        // nền cung thành
+        private readonly ConsoleColor _riverBg = ConsoleColor.DarkCyan;           // nền dòng sông
 
         public void Render(IBoard board, Color currentTurn, int whiteTime, int blackTime, List<string> moveHistorySAN)
         {
@@ -47,49 +49,36 @@ namespace ChessXiangqiSolution.UI.ConsoleUI
                     var piece = board.GetPieceAt(new Position(r, c));
                     string symbol = GetPieceSymbol(piece);
 
-                    // Chọn màu nền: nếu ô nằm trong cung thành của một bên
+                    bool isRiverRow = r == 4 || r == 5;
                     bool isInPalace = (r <= 2 && c >= 3 && c <= 5) || (r >= 7 && c >= 3 && c <= 5);
-                    Console.BackgroundColor = isInPalace ? _palaceBg : _xiangqiNormalBg;
 
-                    // Màu chữ: quân trắng (đỏ) -> Đỏ, quân đen -> Xanh lơ
+                    if (isRiverRow)
+                        Console.BackgroundColor = _riverBg;
+                    else if (isInPalace)
+                        Console.BackgroundColor = _palaceBg;
+                    else
+                        Console.BackgroundColor = ((r + c) % 2 == 0) ? _xiangqiBg1 : _xiangqiBg2;
+
                     if (piece != null)
-                        Console.ForegroundColor = piece.Color == Color.White ? ConsoleColor.Red : ConsoleColor.Cyan;
+                        Console.ForegroundColor = piece.Color == Color.White ? ConsoleColor.DarkRed : ConsoleColor.DarkGreen;
                     else
                         Console.ForegroundColor = ConsoleColor.Gray;
 
-                    Console.Write($" {symbol}  ");
+                    Console.Write($" {symbol} ");
                     Console.ResetColor();
                 }
 
                 // Nhãn hàng bên phải
                 Console.WriteLine($" {rankLabel}");
-
-                // Sau khi vẽ hàng thứ 4 (chỉ số 3) thì vẽ dòng sông
-                if (r == 3)
-                {
-                    DrawRiver();
-                }
             }
 
             // Nhãn cột (1..9)
             Console.Write("   ");
             for (int c = 0; c < cols; c++)
             {
-                Console.Write($" {(c + 1)}  ");
+                Console.Write($" {c + 1} ");
             }
             Console.WriteLine("\n");
-        }
-
-        private void DrawRiver()
-        {
-            // Canh lề: 3 ký tự cho rankLabel bên trái, sau đó 36 ký tự cho 9 ô (mỗi ô 4 ký tự)
-            Console.Write("   ");  // thay cho rankLabel
-            Console.BackgroundColor = _riverBg;
-            Console.ForegroundColor = ConsoleColor.White;
-            // Dòng chữ đại diện cho sông, dài khoảng 36 ký tự
-            Console.Write("  ~~~~~~~~~~~~ SÔNG ~~~~~~~~~~~~  ");
-            Console.ResetColor();
-            Console.WriteLine("   "); // căn lề phải (rankLabel ảo)
         }
 
         // --- Bàn cờ vua (cũ, giữ nguyên) ---
