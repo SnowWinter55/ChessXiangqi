@@ -8,25 +8,96 @@ namespace ChessXiangqiSolution.UI.ConsoleUI
 {
     public class BoardRenderer
     {
-        // Màu nền ô sáng (thay cho ô trắng truyền thống)
+        // Màu nền cho cờ vua (giữ nguyên)
         private readonly ConsoleColor _lightSquareBg = ConsoleColor.Gray;
-        // Màu nền ô tối (thay cho ô đen truyền thống)
         private readonly ConsoleColor _darkSquareBg = ConsoleColor.DarkBlue;
+
+        // Màu nền cho cờ tướng
+        private readonly ConsoleColor _xiangqiNormalBg = ConsoleColor.DarkGray;   // nền ô thường
+        private readonly ConsoleColor _palaceBg = ConsoleColor.DarkYellow;        // nền cung thành
+        private readonly ConsoleColor _riverBg = ConsoleColor.DarkBlue;           // nền dòng sông
 
         public void Render(IBoard board, Color currentTurn, int whiteTime, int blackTime, List<string> moveHistorySAN)
         {
             Console.Clear();
             Console.WriteLine($"Lượt: {(currentTurn == Color.White ? "Trắng" : "Đen")}   🕒 Trắng: {FormatTime(whiteTime)}  Đen: {FormatTime(blackTime)}\n");
 
-            RenderBoard(board);
+            if (board.GameType == GameType.Xiangqi)
+                RenderXiangqiBoard(board);
+            else
+                RenderChessBoard(board);
+
             RenderMoveHistory(moveHistorySAN);
         }
 
-        private void RenderBoard(IBoard board)
+        // --- Bàn cờ tướng (Xiangqi) ---
+        private void RenderXiangqiBoard(IBoard board)
+        {
+            int rows = board.Rows;   // = 10
+            int cols = board.Cols;   // = 9
+
+            for (int r = 0; r < rows; r++)
+            {
+                // Nhãn hàng (từ 10 đến 1)
+                string rankLabel = (rows - r).ToString();
+                Console.Write($"{rankLabel,-3}");
+
+                for (int c = 0; c < cols; c++)
+                {
+                    var piece = board.GetPieceAt(new Position(r, c));
+                    string symbol = GetPieceSymbol(piece);
+
+                    // Chọn màu nền: nếu ô nằm trong cung thành của một bên
+                    bool isInPalace = (r <= 2 && c >= 3 && c <= 5) || (r >= 7 && c >= 3 && c <= 5);
+                    Console.BackgroundColor = isInPalace ? _palaceBg : _xiangqiNormalBg;
+
+                    // Màu chữ: quân trắng (đỏ) -> Đỏ, quân đen -> Xanh lơ
+                    if (piece != null)
+                        Console.ForegroundColor = piece.Color == Color.White ? ConsoleColor.Red : ConsoleColor.Cyan;
+                    else
+                        Console.ForegroundColor = ConsoleColor.Gray;
+
+                    Console.Write($" {symbol}  ");
+                    Console.ResetColor();
+                }
+
+                // Nhãn hàng bên phải
+                Console.WriteLine($" {rankLabel}");
+
+                // Sau khi vẽ hàng thứ 4 (chỉ số 3) thì vẽ dòng sông
+                if (r == 3)
+                {
+                    DrawRiver();
+                }
+            }
+
+            // Nhãn cột (1..9)
+            Console.Write("   ");
+            for (int c = 0; c < cols; c++)
+            {
+                Console.Write($" {(c + 1)}  ");
+            }
+            Console.WriteLine("\n");
+        }
+
+        private void DrawRiver()
+        {
+            // Canh lề: 3 ký tự cho rankLabel bên trái, sau đó 36 ký tự cho 9 ô (mỗi ô 4 ký tự)
+            Console.Write("   ");  // thay cho rankLabel
+            Console.BackgroundColor = _riverBg;
+            Console.ForegroundColor = ConsoleColor.White;
+            // Dòng chữ đại diện cho sông, dài khoảng 36 ký tự
+            Console.Write("  ~~~~~~~~~~~~ SÔNG ~~~~~~~~~~~~  ");
+            Console.ResetColor();
+            Console.WriteLine("   "); // căn lề phải (rankLabel ảo)
+        }
+
+        // --- Bàn cờ vua (cũ, giữ nguyên) ---
+        private void RenderChessBoard(IBoard board)
         {
             int rows = board.Rows;
             int cols = board.Cols;
-            bool isChess = board.GameType == GameType.Chess;
+            bool isChess = true;
 
             for (int r = 0; r < rows; r++)
             {
@@ -81,15 +152,17 @@ namespace ChessXiangqiSolution.UI.ConsoleUI
 
         private string GetPieceSymbol(IPiece piece)
         {
-            if (piece == null) return " ";   // Ẩn dấu chấm, chỉ để trống
+            if (piece == null) return " ";
             return piece.Type switch
             {
+                // Cờ vua
                 PieceType.Pawn => "♙",
                 PieceType.Rook => "♖",
                 PieceType.Knight => "♘",
                 PieceType.Bishop => "♗",
                 PieceType.Queen => "♕",
                 PieceType.King => "♔",
+                // Cờ tướng
                 PieceType.Soldier => "兵",
                 PieceType.Cannon => "炮",
                 PieceType.Chariot => "車",

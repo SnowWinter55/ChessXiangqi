@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ChoiCo")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a7984908aa1f110e40dfdcfe364c547e35730812")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d84fa42bc3c489aac4e6cab021dd92e31311a2b9")]
 [assembly: System.Reflection.AssemblyProductAttribute("ChoiCo")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ChoiCo")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
