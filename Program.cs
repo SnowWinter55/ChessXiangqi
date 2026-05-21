@@ -4,7 +4,9 @@ using System.Text;
 using ChessXiangqiSolution.Core.Interfaces;
 using ChessXiangqiSolution.Core.Models.Chess;
 using ChessXiangqiSolution.Core.Models.Xiangqi;
+using ChessXiangqiSolution.Modules.Clock;
 using ChessXiangqiSolution.UI;
+using ChessXiangqiSolution.UI.ConsoleUI;
 
 namespace ChessXiangqiSolution
 {
@@ -13,33 +15,59 @@ namespace ChessXiangqiSolution
         static void Main(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
-            var gameType = ShowMenu();
-            IBoard board;
-            IMoveValidator validator;
 
-            switch (gameType)
+            // Vòng lặp chính - cho phép quay lại menu sau mỗi ván
+            while (true)
             {
-                case GameSelection.Chess:
-                    board = new ChessBoard();
-                    validator = new ChessMoveValidator();
+                var gameType = ShowGameSelectionMenu();
+                if (gameType == null)
+                {
+                    // Người dùng chọn thoát
                     break;
-                case GameSelection.Xiangqi:
-                    board = new XiangqiBoard();
-                    validator = new XiangqiMoveValidator();
-                    break;
-                default:
-                    board = new ChessBoard();
-                    validator = new ChessMoveValidator();
-                    break;
+                }
+
+                // Tạo board và validator tùy theo loại game đã chọn
+                IBoard board;
+                IMoveValidator validator;
+
+                switch (gameType)
+                {
+                    case GameSelection.Chess:
+                        board = new ChessBoard();
+                        validator = new ChessMoveValidator();
+                        break;
+                    case GameSelection.Xiangqi:
+                        board = new XiangqiBoard();
+                        validator = new XiangqiMoveValidator();
+                        break;
+                    default:
+                        board = new ChessBoard();
+                        validator = new ChessMoveValidator();
+                        break;
+                }
+
+                // Chọn cài đặt đồng hồ
+                var clockSettings = ClockSelectionUI.SelectClockSettings();
+
+                // Chạy trò chơi với clock settings đã chọn
+                var app = new AppController(board, validator, clockSettings);
+                app.Run();
+
+                // Sau khi trò chơi kết thúc, quay lại menu chính
+                Console.Clear();
+                Console.WriteLine("\n✓ Ván đấu đã kết thúc. Quay lại menu chính...\n");
+                System.Threading.Thread.Sleep(2000);
             }
 
-            var app = new AppController(board, validator);
-            app.Run();
+            Console.Clear();
+            Console.WriteLine("Cảm ơn bạn đã chơi ChoiCo!");
+            Console.WriteLine("Hẹn gặp lại!");
         }
 
-        private static GameSelection ShowMenu()
+        /// <summary>Hiển thị menu chọn loại cờ</summary>
+        private static GameSelection? ShowGameSelectionMenu()
         {
-            string[] options = { "Cờ vua (Chess)", "Cờ tướng (Xiangqi)" };
+            string[] options = { "♟ Cờ vua", "帥 Cờ tướng", "❌ Thoát" };
             int selectedIndex = 0;
 
             Console.Clear();
@@ -75,6 +103,11 @@ namespace ChessXiangqiSolution
                         break;
                     case ConsoleKey.Enter:
                         Console.Clear();
+                        if (selectedIndex == 2)
+                        {
+                            // Thoát
+                            return null;
+                        }
                         return selectedIndex == 0 ? GameSelection.Chess : GameSelection.Xiangqi;
                 }
 

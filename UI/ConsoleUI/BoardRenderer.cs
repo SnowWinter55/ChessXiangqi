@@ -18,7 +18,34 @@ namespace ChessXiangqiSolution.UI.ConsoleUI
         private readonly ConsoleColor _xiangqiBg2 = ConsoleColor.Gray;      // nền ô thường xen kẽ
         private readonly ConsoleColor _palaceBg = ConsoleColor.Red;        // nền cung thành
         private readonly ConsoleColor _riverBg = ConsoleColor.DarkCyan;           // nền dòng sông
-
+        private static int GetDisplayWidth(string s)
+        {
+            int width = 0;
+            foreach (char c in s)
+            {
+                // CJK Unified Ideographs + các block full-width phổ biến
+                if ((c >= 0x1100 && c <= 0x115F)   // Hangul
+                || (c >= 0x2E80 && c <= 0x303E)   // CJK Radicals
+                || (c >= 0x3040 && c <= 0xA4CF)   // CJK, Hiragana, Katakana...
+                || (c >= 0xAC00 && c <= 0xD7AF)   // Hangul Syllables
+                || (c >= 0xF900 && c <= 0xFAFF)   // CJK Compatibility
+                || (c >= 0xFE10 && c <= 0xFE19)
+                || (c >= 0xFE30 && c <= 0xFE6F)
+                || (c >= 0xFF00 && c <= 0xFF60)   // Fullwidth Forms
+                || (c >= 0xFFE0 && c <= 0xFFE6))
+                    width += 2;
+                else
+                    width += 1;
+            }
+            return width;
+        }
+        private void WriteCell(string symbol, int cellWidth)
+        {
+            Console.Write(symbol);
+            int padding = cellWidth - GetDisplayWidth(symbol);
+            if (padding > 0)
+                Console.Write(new string(' ', padding));
+        }
         public void Render(IBoard board, Color currentTurn, int whiteTime, int blackTime, List<string> moveHistorySAN)
         {
             Console.Clear();
@@ -64,7 +91,9 @@ namespace ChessXiangqiSolution.UI.ConsoleUI
                     else
                         Console.ForegroundColor = ConsoleColor.Gray;
 
-                    Console.Write($" {symbol} ");
+                    // Sau: (space đầu + symbol + padding tự động)
+                    Console.Write(" ");
+                    WriteCell(symbol, 2);  // cellWidth=2: symbol chiếm đúng 2 cột, cộng space đầu = 3 tổng
                     Console.ResetColor();
                 }
 

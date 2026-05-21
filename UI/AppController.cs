@@ -28,12 +28,11 @@ namespace ChessXiangqiSolution.UI
         private BranchTracker _branchTracker;
         private List<string> _moveHistorySAN;
 
-        // Constructor nhận board và validator từ bên ngoài
-        public AppController(IBoard board, IMoveValidator validator)
+        // Constructor nhận board, validator và clockSettings từ bên ngoài
+        public AppController(IBoard board, IMoveValidator validator, ClockSettings clockSettings)
         {
             _board = board;
             _validator = validator;
-            var clockSettings = ClockSettings.DefaultFischer();
             _clock = new GameClock(clockSettings);
             _currentTurn = Color.White; // Trong chess là White, Xiangqi có thể là Red nhưng enum dùng chung
             _gameOver = false;
@@ -84,7 +83,8 @@ namespace ChessXiangqiSolution.UI
                 if (!_inputHandler.TryParseMove(input, _board, _currentTurn, out Move move))
                 {
                     System.Console.WriteLine("Lỗi: Không thể hiểu nước đi.");
-                    Thread.Sleep(1500);
+                    _inputHandler.DisplayInputHint(_board.GameType);
+                    Thread.Sleep(4000);
                     continue;
                 }
 

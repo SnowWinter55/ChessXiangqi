@@ -1,5 +1,6 @@
 // /Modules/Clock/ClockSettings.cs
 using System;
+using System.Collections.Generic;
 
 namespace ChessXiangqiSolution.Modules.Clock
 {
@@ -48,6 +49,37 @@ namespace ChessXiangqiSolution.Modules.Clock
         public static ClockSettings Blitz()
         {
             return new ClockSettings(3 * 60, 2, ClockMode.Fischer);
+        }
+
+        /// <summary>Tạo cài đặt cho cờ Bullet (1 phút + 1s Fischer)</summary>
+        public static ClockSettings Bullet()
+        {
+            return new ClockSettings(1 * 60, 1, ClockMode.Fischer);
+        }
+
+        /// <summary>Tạo cài đặt Rapid (10 phút + 0s)</summary>
+        public static ClockSettings Rapid()
+        {
+            return new ClockSettings(10 * 60, 0, ClockMode.Standard);
+        }
+
+        /// <summary>Tạo cài đặt Klassic (5 phút + 3s Fischer)</summary>
+        public static ClockSettings Klassic()
+        {
+            return new ClockSettings(5 * 60, 3, ClockMode.Fischer);
+        }
+
+        /// <summary>Lấy danh sách tất cả cài đặt sẵn có</summary>
+        public static Dictionary<string, ClockSettings> GetPresetClocks()
+        {
+            return new Dictionary<string, ClockSettings>
+            {
+                { "Bullet (1p + 1s)", Bullet() },
+                { "Blitz (3p + 2s)", Blitz() },
+                { "Klassic (5p + 3s)", Klassic() },
+                { "Rapid (10p)", Rapid() },
+                { "Chuẩn (15p + 10s)", DefaultFischer() }
+            };
         }
     }
 }
