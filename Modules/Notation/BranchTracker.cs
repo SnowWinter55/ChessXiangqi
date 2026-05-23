@@ -9,7 +9,7 @@ namespace ChessXiangqiSolution.Modules.Notation
 {
     /// <summary>
     /// Lưu trữ cấu trúc cây nước đi (branching) cho phép tạo các biến (variations)
-    /// Hỗ trợ phân tích thế cờ, quay lui giữa các nhánh.
+    /// Hỗ trợ phân tích thế cờ, quay lui giữa các nhánh, và replay ván cờ.
     /// </summary>
     public class BranchTracker
     {
@@ -19,6 +19,7 @@ namespace ChessXiangqiSolution.Modules.Notation
             public Node Parent { get; set; }
             public List<Node> Children { get; set; } = new List<Node>();
             public int VariationId { get; set; } // 0: main line, >0: sub-variation
+            public int MoveIndex { get; set; } // Chỉ số move trong main line
         }
 
         private Node _root;
@@ -28,7 +29,7 @@ namespace ChessXiangqiSolution.Modules.Notation
 
         public BranchTracker()
         {
-            _root = new Node { Move = null, Parent = null };
+            _root = new Node { Move = null, Parent = null, MoveIndex = -1 };
             _currentNode = _root;
             _mainLine = new List<Move>();
             _redoStack = new Stack<Move>();
@@ -49,7 +50,12 @@ namespace ChessXiangqiSolution.Modules.Notation
             }
             else
             {
-                var newNode = new Node { Move = move, Parent = _currentNode };
+                var newNode = new Node 
+                { 
+                    Move = move, 
+                    Parent = _currentNode,
+                    MoveIndex = _mainLine.Count // Chỉ số move hiện tại
+                };
                 _currentNode.Children.Add(newNode);
                 _currentNode = newNode;
             }
@@ -97,21 +103,96 @@ namespace ChessXiangqiSolution.Modules.Notation
             return new List<Move>(_mainLine);
         }
 
+        /// <summary>Lấy toàn bộ dãy nước đi main line từ gốc đến cuối</summary>
+        public List<Move> GetMainLine()
+        {
+            return new List<Move>(_mainLine);
+        }
+
         /// <summary>Đặt nhánh hiện tại làm main line (variation 0)</summary>
         public void SetCurrentAsMainLine()
         {
             _mainLine = GetCurrentLine();
             _redoStack.Clear();
-            // Gán VariationId = 0 cho toàn bộ các node trong main line (có thể duyệt cây)
         }
 
         /// <summary>Reset toàn bộ (ván mới)</summary>
         public void Reset()
         {
-            _root = new Node { Move = null, Parent = null };
+            _root = new Node { Move = null, Parent = null, MoveIndex = -1 };
             _currentNode = _root;
             _mainLine.Clear();
             _redoStack.Clear();
+        }
+
+        /// <summary>Rebuild tree từ danh sách moves (cho replay)</summary>
+        public void RebuildFromMoveList(List<Move> moves)
+        {
+            Reset();
+            
+            if (moves == null || moves.Count == 0)
+                return;
+
+            foreach (var move in moves)
+            {
+                AddMove(move);
+            }
+        }
+
+        /// <summary>Đi tới move tại chỉ số cụ thể (0-based)</summary>
+        public void GoToMoveIndex(int index)
+        {
+            if (index < 0 || index >= _mainLine.Count)
+                return;
+
+            // Reset về root
+            Reset();
+
+            // Navigate đến move tại index
+            for (int i = 0; i <= index; i++)
+            {
+                if (i < _mainLine.Count)
+                {
+                    AddMove(_mainLine[i]);
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+
+        /// <summary>Lấy nước đi tại chỉ số cụ thể (0-based)</summary>
+        public Move GetMoveAtIndex(int index)
+        {
+            if (index < 0 || index >= _mainLine.Count)
+                return null;
+            return _mainLine[index];
+        }
+
+        /// <summary>Lấy tổng số nước đi trong main line</summary>
+        public int GetTotalMoves() => _mainLine.Count;
+
+        /// <summary>Lấy chỉ số move hiện tại (0-based)</summary>
+        public int GetCurrentMoveIndex()
+        {
+            if (_currentNode == null || _currentNode.Parent == null)
+                return -1;
+            return _currentNode.MoveIndex;
+        }
+
+        /// <summary>Quay về root (bắt đầu ván)</summary>
+        public void GoToStart()
+        {
+            _currentNode = _root;
+            _mainLine.Clear();
+            _redoStack.Clear();
+        }
+
+        /// <summary>Đi tới cuối ván</summary>
+        public void GoToEnd()
+        {
+            GoToMoveIndex(_mainLine.Count - 1);
         }
 
         private bool MoveEquals(Move a, Move b)
@@ -143,5 +224,11 @@ namespace ChessXiangqiSolution.Modules.Notation
             }
             return false;
         }
+
+        /// <summary>Kiểm tra xem có thể quay lui không</summary>
+        public bool CanGoBack() => _currentNode.Parent != null;
+
+        /// <summary>Kiểm tra xem có thể quay trước không</summary>
+        public bool CanGoForward() => _redoStack.Count > 0;
     }
 }

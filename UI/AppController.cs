@@ -28,6 +28,12 @@ namespace ChessXiangqiSolution.UI
         private BranchTracker _branchTracker;
         private List<string> _moveHistorySAN;
 
+        // Replay mode properties
+        private bool _isReplayMode = false;
+        private int _replayMoveIndex = -1;
+        private MatchRecord _replayingRecord = null;
+        private GameSaver _gameSaver = new GameSaver();
+
         // Constructor nhận board, validator và clockSettings từ bên ngoài
         public AppController(IBoard board, IMoveValidator validator, ClockSettings clockSettings)
         {
@@ -169,6 +175,84 @@ namespace ChessXiangqiSolution.UI
                 }
                 System.Console.WriteLine();
             }
+
+            // Hỏi người chơi có muốn lưu ván game
+            PromptToSaveGame();
+        }
+
+        /// <summary>Prompt user to save the current game</summary>
+        private void PromptToSaveGame()
+        {
+            System.Console.WriteLine("\n--- SAVE GAME ---");
+            System.Console.Write("Bạn có muốn lưu biên bản ván đấu? (y/n): ");
+            
+            string response = System.Console.ReadLine()?.Trim().ToLower();
+            if (response != "y" && response != "yes")
+            {
+                System.Console.WriteLine("Không lưu.");
+                Thread.Sleep(1000);
+                return;
+            }
+
+            System.Console.Write("Nhập tên tệp (không có phần mở rộng): ");
+            string filename = System.Console.ReadLine()?.Trim();
+            
+            if (string.IsNullOrEmpty(filename))
+            {
+                System.Console.WriteLine("Tên không hợp lệ. Biên bản không được lưu.");
+                Thread.Sleep(1000);
+                return;
+            }
+
+            try
+            {
+                // Create MatchRecord from current game state
+                var record = CreateMatchRecordFromGame();
+                
+                // Generate timestamp for default filename
+                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                string finalFilename = $"{filename}_{timestamp}.txt";
+                
+                // Resolve path using GameRecordsManager
+                string filePath = GameRecordsManager.ResolveGameFilePath(finalFilename);
+                
+                // Export to file (use GameSaver for proper formatting)
+                _gameSaver.SaveGame(filePath, record);
+                
+                System.Console.WriteLine($"✓ Game saved successfully to: {finalFilename}");
+                Thread.Sleep(2000);
+            }
+            catch (Exception ex)
+            {
+                System.Console.WriteLine($"Error saving game: {ex.Message}");
+                Thread.Sleep(2000);
+            }
+        }
+
+        /// <summary>Create MatchRecord from current game state</summary>
+        private MatchRecord CreateMatchRecordFromGame()
+        {
+            var record = new MatchRecord
+            {
+                GameType = _board.GameType.ToString(), // Convert enum to string
+                Moves = _branchTracker.GetCurrentLine().ToList(),
+                WhitePlayer = "Player 1",
+                BlackPlayer = "Player 2",
+                Event = $"{_board.GameType.ToString()} Game",
+                Date = System.DateTime.Now,
+                TimeControl = $"{_clock.Settings.InitialTimeSeconds}+{_clock.Settings.IncrementSeconds}",
+                FinalState = new GameState
+                {
+                    IsGameOver = true,
+                    GameOverReason = "Game completed",
+                    CurrentTurn = _currentTurn,
+                    WhiteTimeSeconds = _clock.GetRemainingTime(Color.White),
+                    BlackTimeSeconds = _clock.GetRemainingTime(Color.Black),
+                    Fen = ""
+                }
+            };
+
+            return record;
         }
 
         private void PerformUndo()
@@ -340,6 +424,262 @@ namespace ChessXiangqiSolution.UI
             int min = seconds / 60;
             int sec = seconds % 60;
             return $"{min:D2}:{sec:D2}";
+        }
+
+        /// <summary>
+        /// Vào chế độ replay ván cờ từ file
+        /// </summary>
+        public void ReplayGameFromFile(string filePath)
+        {
+            try
+            {
+                // Load game từ file
+                var record = _gameSaver.LoadGame(filePath);
+                if (record == null)
+                {
+                    GameReplayUI.DisplayError("Failed to load game file");
+                    return;
+                }
+
+                // Replay game
+                bool success = _gameSaver.ReplayGame(record, _board, _validator, _historyManager, _branchTracker);
+                if (!success)
+                {
+                    GameReplayUI.DisplayError("Failed to replay game - invalid moves detected");
+                    return;
+                }
+
+                // Enter replay mode
+                EnterReplayMode(record);
+            }
+            catch (Exception ex)
+            {
+                GameReplayUI.DisplayError($"Exception: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Vào chế độ replay
+        /// </summary>
+        private void EnterReplayMode(MatchRecord record)
+        {
+            _isReplayMode = true;
+            _replayingRecord = record;
+            _replayMoveIndex = -1; // Start at beginning
+
+            GameReplayUI.DisplayGameInfo(record);
+            GameReplayUI.DisplayReplayControls();
+            System.Console.ReadKey();
+
+            RunReplayMode();
+        }
+
+        /// <summary>
+        /// Chạy vòng lặp chính cho chế độ replay
+        /// </summary>
+        private void RunReplayMode()
+        {
+            while (_isReplayMode)
+            {
+                System.Console.Clear();
+                
+                // Render board tại move hiện tại
+                RenderReplayBoard();
+
+                // Nhập lệnh
+                var command = GameReplayUI.GetReplayCommand();
+
+                switch (command)
+                {
+                    case ReplayCommand.Next:
+                        NextReplayMove();
+                        break;
+                    case ReplayCommand.Previous:
+                        PreviousReplayMove();
+                        break;
+                    case ReplayCommand.ToStart:
+                        GoToStartReplay();
+                        break;
+                    case ReplayCommand.ToEnd:
+                        GoToEndReplay();
+                        break;
+                    case ReplayCommand.GoToMove:
+                        int moveIdx = GameReplayUI.GetMoveIndex(_replayingRecord.GetTotalMoves());
+                        if (moveIdx >= 0)
+                            GoToMoveIndexReplay(moveIdx);
+                        break;
+                    case ReplayCommand.Export:
+                        ExportCurrentReplayPosition();
+                        break;
+                    case ReplayCommand.Quit:
+                        ExitReplayMode();
+                        break;
+                    default:
+                        continue;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Render board cho chế độ replay
+        /// </summary>
+        private void RenderReplayBoard()
+        {
+            int totalMoves = _replayingRecord.GetTotalMoves();
+            
+            // Render board at current position
+            _renderer.Render(_board, Color.White,
+                -1, -1, // No clock display
+                new List<string>()); // No move history display
+
+            // Show move counter
+            GameReplayUI.DisplayMoveCounter(_replayMoveIndex, totalMoves);
+            
+            // Show current move info
+            if (_replayMoveIndex >= 0 && _replayMoveIndex < totalMoves)
+            {
+                var move = _replayingRecord.GetMoveAtIndex(_replayMoveIndex);
+                string sanMove = move.San ?? $"{move.From}-{move.To}";
+                Console.WriteLine($"\nCurrent move: {sanMove}");
+            }
+
+            GameReplayUI.DisplayMoveList(_replayingRecord.Moves, _replayMoveIndex);
+        }
+
+        /// <summary>
+        /// Đi tới nước tiếp theo
+        /// </summary>
+        private void NextReplayMove()
+        {
+            if (_replayMoveIndex < _replayingRecord.GetTotalMoves() - 1)
+            {
+                _replayMoveIndex++;
+                _branchTracker.GoToMoveIndex(_replayMoveIndex);
+                
+                // Rebuild board from start to this position
+                RebuildBoardToMoveIndex(_replayMoveIndex);
+            }
+        }
+
+        /// <summary>
+        /// Đi tới nước trước đó
+        /// </summary>
+        private void PreviousReplayMove()
+        {
+            if (_replayMoveIndex > -1)
+            {
+                _replayMoveIndex--;
+                _branchTracker.GoToMoveIndex(_replayMoveIndex);
+                
+                // Rebuild board from start to this position
+                RebuildBoardToMoveIndex(_replayMoveIndex);
+            }
+        }
+
+        /// <summary>
+        /// Đi tới đầu ván
+        /// </summary>
+        private void GoToStartReplay()
+        {
+            _replayMoveIndex = -1;
+            _branchTracker.GoToStart();
+            ResetBoard();
+        }
+
+        /// <summary>
+        /// Đi tới cuối ván
+        /// </summary>
+        private void GoToEndReplay()
+        {
+            _replayMoveIndex = _replayingRecord.GetTotalMoves() - 1;
+            _branchTracker.GoToEnd();
+            RebuildBoardToMoveIndex(_replayMoveIndex);
+        }
+
+        /// <summary>
+        /// Đi tới move cụ thể
+        /// </summary>
+        private void GoToMoveIndexReplay(int moveIndex)
+        {
+            if (moveIndex >= 0 && moveIndex < _replayingRecord.GetTotalMoves())
+            {
+                _replayMoveIndex = moveIndex;
+                _branchTracker.GoToMoveIndex(moveIndex);
+                RebuildBoardToMoveIndex(moveIndex);
+            }
+        }
+
+        /// <summary>
+        /// Rebuild board từ đầu đến move cụ thể
+        /// </summary>
+        private void RebuildBoardToMoveIndex(int moveIndex)
+        {
+            ResetBoard();
+            
+            if (moveIndex < 0)
+                return;
+
+            for (int i = 0; i <= moveIndex && i < _replayingRecord.GetTotalMoves(); i++)
+            {
+                var move = _replayingRecord.GetMoveAtIndex(i);
+                _board.MakeMove(move);
+            }
+        }
+
+        /// <summary>
+        /// Reset board về trạng thái ban đầu
+        /// </summary>
+        private void ResetBoard()
+        {
+            // Create new board instance with same type
+            // This is simplified - in reality you'd need to reinitialize properly
+            _historyManager.Clear();
+        }
+
+        /// <summary>
+        /// Export vị trí hiện tại
+        /// </summary>
+        private void ExportCurrentReplayPosition()
+        {
+            string filePath = GameReplayUI.GetExportFilePath();
+            if (string.IsNullOrEmpty(filePath))
+                return;
+
+            try
+            {
+                var record = _replayingRecord.Clone();
+                // Trim moves to current position
+                if (_replayMoveIndex >= 0)
+                {
+                    record.Moves = _replayingRecord.Moves.Take(_replayMoveIndex + 1).ToList();
+                }
+                else
+                {
+                    record.Moves.Clear();
+                }
+
+                _gameSaver.SaveGame(filePath, record);
+                GameReplayUI.DisplaySuccess($"Exported to {filePath}");
+                System.Console.ReadKey();
+            }
+            catch (Exception ex)
+            {
+                GameReplayUI.DisplayError($"Export failed: {ex.Message}");
+                System.Console.ReadKey();
+            }
+        }
+
+        /// <summary>
+        /// Thoát chế độ replay
+        /// </summary>
+        private void ExitReplayMode()
+        {
+            _isReplayMode = false;
+            _replayingRecord = null;
+            _replayMoveIndex = -1;
+            System.Console.Clear();
+            System.Console.WriteLine("Exited replay mode. Press any key to continue...");
+            System.Console.ReadKey();
         }
     }
 }

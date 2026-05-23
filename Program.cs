@@ -1,10 +1,12 @@
 ﻿// /Program.cs
 using System;
+using System.IO;
 using System.Text;
 using ChessXiangqiSolution.Core.Interfaces;
 using ChessXiangqiSolution.Core.Models.Chess;
 using ChessXiangqiSolution.Core.Models.Xiangqi;
 using ChessXiangqiSolution.Modules.Clock;
+using ChessXiangqiSolution.Modules.Notation;
 using ChessXiangqiSolution.UI;
 using ChessXiangqiSolution.UI.ConsoleUI;
 
@@ -46,14 +48,44 @@ namespace ChessXiangqiSolution
                         break;
                 }
 
-                // Chọn cài đặt đồng hồ
-                var clockSettings = ClockSelectionUI.SelectClockSettings();
+                // Show game mode menu (Play new or Load game)
+                var gameMode = ShowGameModeMenu();
+                if (gameMode == null)
+                {
+                    // User selected back, return to root menu
+                    continue;
+                }
 
-                // Chạy trò chơi với clock settings đã chọn
-                var app = new AppController(board, validator, clockSettings);
-                app.Run();
+                if (gameMode == GameMode.PlayNew)
+                {
+                    // Select clock settings for new game
+                    var clockSettings = ClockSelectionUI.SelectClockSettings();
+                    if (clockSettings == null)
+                    {
+                        // User cancelled clock selection, back to game mode menu
+                        continue;
+                    }
+                    var app = new AppController(board, validator, clockSettings);
+                    app.Run();
+                }
+                else if (gameMode == GameMode.LoadGame)
+                {
+                    // Load and replay game from file
+                    string filePath = PromptForGameFile();
+                    if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
+                    {
+                        var app = new AppController(board, validator, GameRecordsManager.GetDefaultClockSettings());
+                        app.ReplayGameFromFile(filePath);
+                    }
+                    else
+                    {
+                        Console.Clear();
+                        Console.WriteLine("File not found or operation cancelled.");
+                        System.Threading.Thread.Sleep(2000);
+                    }
+                }
 
-                // Sau khi trò chơi kết thúc, quay lại menu chính
+                // After game ends, return to root menu
                 Console.Clear();
                 Console.WriteLine("\n✓ Ván đấu đã kết thúc. Quay lại menu chính...\n");
                 System.Threading.Thread.Sleep(2000);
@@ -76,7 +108,7 @@ namespace ChessXiangqiSolution
 
             while (true)
             {
-                // In menu
+                // Display menu
                 for (int i = 0; i < options.Length; i++)
                 {
                     if (i == selectedIndex)
@@ -105,7 +137,7 @@ namespace ChessXiangqiSolution
                         Console.Clear();
                         if (selectedIndex == 2)
                         {
-                            // Thoát
+                            // Exit
                             return null;
                         }
                         return selectedIndex == 0 ? GameSelection.Chess : GameSelection.Xiangqi;
@@ -116,10 +148,101 @@ namespace ChessXiangqiSolution
             }
         }
 
+        /// <summary>Prompt user for game file path with auto-parse functionality</summary>
+        private static string PromptForGameFile()
+        {
+            Console.Clear();
+            Console.WriteLine("=== LOAD GAME ===");
+            Console.WriteLine($"Game records location: {GameRecordsManager.GetGameRecordsPath()}");
+            Console.WriteLine("Supported formats: .pgn (Chess), .xqg (Xiangqi), .json\n");
+            
+            // Display available game records with file sizes
+            GameRecordsManager.DisplayAvailableGameRecords();
+
+            Console.Write("Enter filename or path (or leave empty to cancel): ");
+            string input = Console.ReadLine();
+
+            if (string.IsNullOrEmpty(input))
+                return null;
+
+            // Auto-parse and resolve file path
+            string filePath = GameRecordsManager.ResolveGameFilePath(input);
+
+            // Validate the file exists
+            if (!GameRecordsManager.ValidateGameFilePath(filePath))
+            {
+                Console.WriteLine($"Error: File not found: {filePath}");
+                System.Threading.Thread.Sleep(2000);
+                return null;
+            }
+
+            return filePath;
+        }
+
+        /// <summary>Display game mode menu (Play New or Load Game)</summary>
+        private static GameMode? ShowGameModeMenu()
+        {
+            string[] options = { "▶ Play New Game", "📂 Load Game from File", "⬅ Back to Game Selection" };
+            int selectedIndex = 0;
+
+            Console.Clear();
+            Console.WriteLine("=== SELECT GAME MODE ===");
+            Console.WriteLine("Use ↑/↓ arrows to select, Enter to confirm.\n");
+
+            while (true)
+            {
+                // Display menu
+                for (int i = 0; i < options.Length; i++)
+                {
+                    if (i == selectedIndex)
+                    {
+                        Console.BackgroundColor = ConsoleColor.White;
+                        Console.ForegroundColor = ConsoleColor.Black;
+                        Console.WriteLine($"> {options[i]}");
+                        Console.ResetColor();
+                    }
+                    else
+                    {
+                        Console.WriteLine($"  {options[i]}");
+                    }
+                }
+
+                var key = Console.ReadKey(true).Key;
+                switch (key)
+                {
+                    case ConsoleKey.UpArrow:
+                        selectedIndex = (selectedIndex - 1 + options.Length) % options.Length;
+                        break;
+                    case ConsoleKey.DownArrow:
+                        selectedIndex = (selectedIndex + 1) % options.Length;
+                        break;
+                    case ConsoleKey.Enter:
+                        Console.Clear();
+                        if (selectedIndex == 2)
+                        {
+                            // Back to game selection
+                            return null;
+                        }
+                        return selectedIndex == 0 ? GameMode.PlayNew : GameMode.LoadGame;
+                }
+
+                // Move cursor back to menu start to overwrite
+                Console.SetCursorPosition(0, 3);
+            }
+        }
+
         private enum GameSelection
         {
             Chess,
             Xiangqi
         }
+
+        private enum GameMode
+        {
+            PlayNew,
+            LoadGame
+        }
     }
 }
+        
+    
