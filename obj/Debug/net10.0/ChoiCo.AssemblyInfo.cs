@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ChoiCo")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f7dff0f7f351dee5112587bad5d897376355a4eb")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+aedebf8ba92d88902f4bd45d32af688db0efaa5d")]
 [assembly: System.Reflection.AssemblyProductAttribute("ChoiCo")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ChoiCo")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
