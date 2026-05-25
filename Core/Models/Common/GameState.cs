@@ -35,6 +35,9 @@ namespace ChessXiangqiSolution.Core.Models.Common
         /// <summary>Lưu thêm nếu cần: số nước đi, history...</summary>
         public int MoveNumber { get; set; } // Số nước đi đã thực hiện
 
+        /// <summary>Trạng thái của ván đấu (Game hoặc Analyse)</summary>
+        public MatchState State { get; set; }
+
         public GameState()
         {
             CurrentTurn = Color.White; // hoặc Red trong cờ tướng
@@ -43,6 +46,7 @@ namespace ChessXiangqiSolution.Core.Models.Common
             MoveNumber = 0;
             WhiteTimeSeconds = 0;
             BlackTimeSeconds = 0;
+            State = MatchState.Game;
         }
 
         /// <summary>Khởi tạo từ FEN và cài đặt thời gian</summary>

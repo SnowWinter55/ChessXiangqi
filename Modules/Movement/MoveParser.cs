@@ -76,7 +76,7 @@ namespace ChessXiangqiSolution.Modules.Movement
                 try
                 {
                     var from = Position.FromChessAlgebraic(input.Substring(0, 2));
-                    var to   = Position.FromChessAlgebraic(input.Substring(2, 2));
+                    var to = Position.FromChessAlgebraic(input.Substring(2, 2));
                     move = new Move(from, to);
                     return true;
                 }
@@ -90,17 +90,17 @@ namespace ChessXiangqiSolution.Modules.Movement
             {
                 int userFromCol = int.Parse(m.Groups[1].Value);
                 int userFromRow = int.Parse(m.Groups[2].Value);
-                int userToCol   = int.Parse(m.Groups[3].Value);
-                int userToRow   = int.Parse(m.Groups[4].Value);
+                int userToCol = int.Parse(m.Groups[3].Value);
+                int userToRow = int.Parse(m.Groups[4].Value);
 
                 // Áp dụng mirroring cho White (quân đỏ)
                 int internalFromCol = UserColToInternal(userFromCol, currentTurn);
                 int internalFromRow = UserRowToInternal(userFromRow, currentTurn, board.Rows);
-                int internalToCol   = UserColToInternal(userToCol, currentTurn);
-                int internalToRow   = UserRowToInternal(userToRow, currentTurn, board.Rows);
+                int internalToCol = UserColToInternal(userToCol, currentTurn);
+                int internalToRow = UserRowToInternal(userToRow, currentTurn, board.Rows);
 
                 var from = new Position(internalFromRow, internalFromCol);
-                var to   = new Position(internalToRow, internalToCol);
+                var to = new Position(internalToRow, internalToCol);
 
                 if (!board.IsValidPos(from) || !board.IsValidPos(to))
                     return false;
@@ -121,18 +121,34 @@ namespace ChessXiangqiSolution.Modules.Movement
             string upper = san.ToUpperInvariant();
             string clean = Regex.Replace(upper, @"[+#!?]", "");
 
-            if (clean == "O-O"   || clean == "0-0")
+            if (clean == "O-O" || clean == "0-0")
                 return TryParseCastling(board, currentTurn, false, out move);
             if (clean == "O-O-O" || clean == "0-0-0")
-                return TryParseCastling(board, currentTurn, true,  out move);
+                return TryParseCastling(board, currentTurn, true, out move);
+
+            // Capture promotion piece trước khi match phần còn lại
+            PieceType? promotionPiece = null;
+            var promoMatch = Regex.Match(clean, @"=([QRBN])$");
+            if (promoMatch.Success)
+            {
+                promotionPiece = promoMatch.Groups[1].Value switch
+                {
+                    "Q" => PieceType.Queen,
+                    "R" => PieceType.Rook,
+                    "B" => PieceType.Bishop,
+                    "N" => PieceType.Knight,
+                    _ => PieceType.Queen
+                };
+                clean = clean.Substring(0, clean.Length - 2); // bỏ "=Q" khỏi string
+            }
 
             var match = Regex.Match(clean, @"^([KQRNB])?([A-H])?([1-8])?X?([A-H][1-8])$");
             if (!match.Success) return false;
 
             string pieceLetter = match.Groups[1].Value;
-            string fromFile    = match.Groups[2].Value;
-            string fromRank    = match.Groups[3].Value;
-            string toSquare    = match.Groups[4].Value;
+            string fromFile = match.Groups[2].Value;
+            string fromRank = match.Groups[3].Value;
+            string toSquare = match.Groups[4].Value;
 
             string toSquareLower = toSquare[0].ToString().ToLowerInvariant() + toSquare[1];
             Position to;
@@ -146,7 +162,7 @@ namespace ChessXiangqiSolution.Modules.Movement
                 "R" => PieceType.Rook,
                 "N" => PieceType.Knight,
                 "B" => PieceType.Bishop,
-                _   => PieceType.Pawn
+                _ => PieceType.Pawn
             };
 
             var candidates = new List<(Position pos, IPiece piece)>();
@@ -169,12 +185,15 @@ namespace ChessXiangqiSolution.Modules.Movement
             if (candidates.Count != 1) return false;
 
             move = new Move(candidates[0].pos, to);
+            move.PromotionPiece = promotionPiece; // ← set promotion
+
+            //check enpassant
             if (pieceType == PieceType.Pawn
                 && board.IsEmpty(to)
                 && Math.Abs(move.From.Col - move.To.Col) == 1)
             {
-                move.IsEnPassant    = true;
-                move.CapturedPiece  = board.GetPieceAt(new Position(move.From.Row, move.To.Col));
+                move.IsEnPassant = true;
+                move.CapturedPiece = board.GetPieceAt(new Position(move.From.Row, move.To.Col));
             }
             else
             {
@@ -186,10 +205,10 @@ namespace ChessXiangqiSolution.Modules.Movement
         private static bool TryParseCastling(IBoard board, Color currentTurn, bool isQueenSide, out Move move)
         {
             move = null;
-            int backRow  = currentTurn == Color.White ? 7 : 0;
+            int backRow = currentTurn == Color.White ? 7 : 0;
             var kingFrom = new Position(backRow, 4);
-            var kingTo   = isQueenSide ? new Position(backRow, 2) : new Position(backRow, 6);
-            var king     = board.GetPieceAt(kingFrom);
+            var kingTo = isQueenSide ? new Position(backRow, 2) : new Position(backRow, 6);
+            var king = board.GetPieceAt(kingFrom);
             if (king?.Type != PieceType.King || king.Color != currentTurn) return false;
             move = new Move(kingFrom, kingTo) { IsCastling = true };
             return true;
@@ -212,9 +231,9 @@ namespace ChessXiangqiSolution.Modules.Movement
         private static readonly Regex XiangqiSanRegex = new Regex(
             @"^(Tg|tg|[SsTtXxPpMmBb])" +  // quân
             @"(?:\(h(\d{1,2})\)|([ts]))?" + // disambig tọa độ hoặc trước/sau
-            @"([1-9])"                      + // cột xuất phát (góc nhìn người chơi)
-            @"([+\-=tTlLbB])"              + // hướng
-            @"([1-9])"                      + // số đích
+            @"([1-9])" + // cột xuất phát (góc nhìn người chơi)
+            @"([+\-=tTlLbB])" + // hướng
+            @"([1-9])" + // số đích
             @"[+#!?]*$",
             RegexOptions.None);
 
@@ -226,12 +245,12 @@ namespace ChessXiangqiSolution.Modules.Movement
             if (!m.Success) return false;
 
             // ── 1. Parse các nhóm token ──────────────────────────────
-            string pieceToken   = m.Groups[1].Value;
-            string hRowStr      = m.Groups[2].Value;   // hàng tuyệt đối (góc người chơi), rỗng nếu không có
-            string tsToken      = m.Groups[3].Value;   // "t" hoặc "s", rỗng nếu không có
-            int    userFromCol  = int.Parse(m.Groups[4].Value); // 1-9 góc người chơi
-            char   dirChar      = char.ToLowerInvariant(m.Groups[5].Value[0]);
-            int    toNum        = int.Parse(m.Groups[6].Value); // 1-9 góc người chơi
+            string pieceToken = m.Groups[1].Value;
+            string hRowStr = m.Groups[2].Value;   // hàng tuyệt đối (góc người chơi), rỗng nếu không có
+            string tsToken = m.Groups[3].Value;   // "t" hoặc "s", rỗng nếu không có
+            int userFromCol = int.Parse(m.Groups[4].Value); // 1-9 góc người chơi
+            char dirChar = char.ToLowerInvariant(m.Groups[5].Value[0]);
+            int toNum = int.Parse(m.Groups[6].Value); // 1-9 góc người chơi
 
             // ── 2. Map ký hiệu quân → PieceType ─────────────────────
             PieceType pieceType = MapPieceToken(pieceToken);
@@ -243,7 +262,7 @@ namespace ChessXiangqiSolution.Modules.Movement
                 '+' or 't' => MoveDirection.Forward,
                 '-' or 'l' => MoveDirection.Backward,
                 '=' or 'b' => MoveDirection.Sideways,
-                _           => MoveDirection.Unknown
+                _ => MoveDirection.Unknown
             };
             if (dir == MoveDirection.Unknown) return false;
 
@@ -265,9 +284,9 @@ namespace ChessXiangqiSolution.Modules.Movement
             if (!string.IsNullOrEmpty(hRowStr))
             {
                 // Dạng (hN): hàng N theo góc nhìn người chơi
-                int userRow      = int.Parse(hRowStr);
-                int internalRow  = UserRowToInternal(userRow, currentTurn, board.Rows);
-                var found        = allOfType.Where(x => x.Pos.Row == internalRow).ToList();
+                int userRow = int.Parse(hRowStr);
+                int internalRow = UserRowToInternal(userRow, currentTurn, board.Rows);
+                var found = allOfType.Where(x => x.Pos.Row == internalRow).ToList();
                 if (found.Count != 1) return false;
                 fromPos = found[0].Pos;
             }
@@ -325,12 +344,12 @@ namespace ChessXiangqiSolution.Modules.Movement
             return token.ToLowerInvariant() switch
             {
                 "tg" => PieceType.General,
-                "s"  => PieceType.Advisor,
-                "t"  => PieceType.Elephant,
-                "x"  => PieceType.Chariot,
-                "p"  => PieceType.Cannon,
-                "m"  => PieceType.Horse,
-                "b"  => PieceType.Soldier,
+                "s" => PieceType.Advisor,
+                "t" => PieceType.Elephant,
+                "x" => PieceType.Chariot,
+                "p" => PieceType.Cannon,
+                "m" => PieceType.Horse,
+                "b" => PieceType.Soldier,
             };
         }
 
@@ -386,7 +405,7 @@ namespace ChessXiangqiSolution.Modules.Movement
                 case PieceType.Cannon:
                     return dir switch
                     {
-                        MoveDirection.Forward  => new Position(from.Row + forward * toNum, from.Col),
+                        MoveDirection.Forward => new Position(from.Row + forward * toNum, from.Col),
                         MoveDirection.Backward => new Position(from.Row - forward * toNum, from.Col),
                         MoveDirection.Sideways => new Position(from.Row, UserColToInternal(toNum, color)),
                         _ => null
@@ -398,7 +417,7 @@ namespace ChessXiangqiSolution.Modules.Movement
                 case PieceType.Soldier:
                     return dir switch
                     {
-                        MoveDirection.Forward  => new Position(from.Row + forward, from.Col),
+                        MoveDirection.Forward => new Position(from.Row + forward, from.Col),
                         MoveDirection.Sideways => new Position(from.Row, UserColToInternal(toNum, color)),
                         MoveDirection.Backward => null, // Tốt không được lui
                         _ => null
@@ -410,7 +429,7 @@ namespace ChessXiangqiSolution.Modules.Movement
                 case PieceType.General:
                     return dir switch
                     {
-                        MoveDirection.Forward  => new Position(from.Row + forward, from.Col),
+                        MoveDirection.Forward => new Position(from.Row + forward, from.Col),
                         MoveDirection.Backward => new Position(from.Row - forward, from.Col),
                         MoveDirection.Sideways => new Position(from.Row, UserColToInternal(toNum, color)),
                         _ => null
@@ -420,13 +439,13 @@ namespace ChessXiangqiSolution.Modules.Movement
                 //   toNum = cột đích (góc người chơi)
                 //   hàng: tiến → +forward, lui → -forward
                 case PieceType.Advisor:
-                {
-                    int toCol = UserColToInternal(toNum, color);
-                    int toRow = dir == MoveDirection.Forward
-                        ? from.Row + forward
-                        : from.Row - forward;
-                    return new Position(toRow, toCol);
-                }
+                    {
+                        int toCol = UserColToInternal(toNum, color);
+                        int toRow = dir == MoveDirection.Forward
+                            ? from.Row + forward
+                            : from.Row - forward;
+                        return new Position(toRow, toCol);
+                    }
 
                 // ── Tịnh / Tượng ───────────────────────────────────
                 //   toNum = cột đích (góc người chơi)
@@ -434,11 +453,11 @@ namespace ChessXiangqiSolution.Modules.Movement
                 //   Trong tất cả ô đích hợp lệ của Tượng, chọn ô có col == toCol
                 //   và hướng (tiến/lui) khớp với dir
                 case PieceType.Elephant:
-                {
-                    int toCol     = UserColToInternal(toNum, color);
-                    int rowDelta  = dir == MoveDirection.Forward ? forward * 2 : -forward * 2;
-                    return new Position(from.Row + rowDelta, toCol);
-                }
+                    {
+                        int toCol = UserColToInternal(toNum, color);
+                        int rowDelta = dir == MoveDirection.Forward ? forward * 2 : -forward * 2;
+                        return new Position(from.Row + rowDelta, toCol);
+                    }
 
                 // ── Mã ─────────────────────────────────────────────
                 //   toNum = cột đích (góc người chơi)
@@ -448,23 +467,23 @@ namespace ChessXiangqiSolution.Modules.Movement
                 //           hàng đích = from.Row + forward*1 (bước 1 hàng rồi 2 cột)
                 //   Trong tất cả ô Mã hợp lệ, chọn ô có col == toCol và dir đúng
                 case PieceType.Horse:
-                {
-                    int toCol = UserColToInternal(toNum, color);
-                    // Tìm trong tập nước đi hợp lệ của Mã: ô nào có col == toCol
-                    // và hướng row phù hợp với dir
-                    var horsePiece = board.GetPieceAt(from);
-                    if (horsePiece == null) return null;
-                    var validMoves = horsePiece.GetValidMoves(board, from);
-                    foreach (var v in validMoves)
                     {
-                        if (v.Col != toCol) continue;
-                        int rowDiff = v.Row - from.Row; // dương = xuống (Black forward), âm = lên (White forward)
-                        bool isForward = (rowDiff * forward) > 0;
-                        if (dir == MoveDirection.Forward  && isForward)  return v;
-                        if (dir == MoveDirection.Backward && !isForward) return v;
+                        int toCol = UserColToInternal(toNum, color);
+                        // Tìm trong tập nước đi hợp lệ của Mã: ô nào có col == toCol
+                        // và hướng row phù hợp với dir
+                        var horsePiece = board.GetPieceAt(from);
+                        if (horsePiece == null) return null;
+                        var validMoves = horsePiece.GetValidMoves(board, from);
+                        foreach (var v in validMoves)
+                        {
+                            if (v.Col != toCol) continue;
+                            int rowDiff = v.Row - from.Row; // dương = xuống (Black forward), âm = lên (White forward)
+                            bool isForward = (rowDiff * forward) > 0;
+                            if (dir == MoveDirection.Forward && isForward) return v;
+                            if (dir == MoveDirection.Backward && !isForward) return v;
+                        }
+                        return null;
                     }
-                    return null;
-                }
 
                 default:
                     return null;

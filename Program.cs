@@ -76,12 +76,13 @@ namespace ChessXiangqiSolution
                     {
                         var app = new AppController(board, validator, GameRecordsManager.GetDefaultClockSettings());
                         app.ReplayGameFromFile(filePath);
+                        Console.ReadLine();
                     }
                     else
                     {
                         Console.Clear();
                         Console.WriteLine("File not found or operation cancelled.");
-                        System.Threading.Thread.Sleep(2000);
+                        Console.ReadLine();
                     }
                 }
 

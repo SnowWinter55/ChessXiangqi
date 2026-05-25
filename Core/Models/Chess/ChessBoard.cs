@@ -182,5 +182,16 @@ namespace ChessXiangqiSolution.Core.Models.Chess
             }
             return false;
         }
+
+        public IBoard Reset()
+        {
+            for (int r = 0; r < Rows; r++)
+                for (int c = 0; c < Cols; c++)
+                    _board[r, c] = null;
+            _pieceMoved.Clear();
+            _lastMove = null;
+            InitializeStandardPosition();
+            return this;
+        }
     }
 }

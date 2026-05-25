@@ -5,6 +5,7 @@ using System.Linq;
 using ChessXiangqiSolution.Core.Enums;
 using ChessXiangqiSolution.Core.Interfaces;
 using ChessXiangqiSolution.Core.Models.Common;
+using ChessXiangqiSolution.Modules.Movement;
 
 namespace ChessXiangqiSolution.Modules.Notation
 {
@@ -46,18 +47,22 @@ namespace ChessXiangqiSolution.Modules.Notation
         public int GetTotalMoves() => Moves.Count;
 
         /// <summary>Kiểm tra toàn bộ nước đi có hợp lệ không (cần board và validator)</summary>
-        public bool ValidateAllMoves(IBoard board, IMoveValidator validator, Color startingColor)
+        public bool ValidateAllMoves(IBoard boardForValidation, IMoveValidator validator, Color startingColor)
         {
             try
             {
                 Color currentColor = startingColor;
                 foreach (var move in Moves)
                 {
-                    if (!validator.IsValidMove(board, move, currentColor))
+                    // Parse SAN để lấy From/To coordinates thực (vì moves được load từ file chỉ có SAN)
+                    if (!MoveParser.TryParse(move.San, boardForValidation, currentColor, out Move resolvedMove))
+                        return false;
+                    
+                    if (!validator.IsValidMove(boardForValidation, resolvedMove, currentColor))
                         return false;
                     
                     // Thực hiện nước đi để tiếp tục validate nước tiếp theo
-                    board.MakeMove(move);
+                    boardForValidation.MakeMove(resolvedMove);
                     currentColor = currentColor == Color.White ? Color.Black : Color.White;
                 }
                 return true;

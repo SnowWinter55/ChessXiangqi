@@ -66,28 +66,29 @@ namespace ChessXiangqiSolution.Modules.Notation
                 // Xác định màu bắt đầu dựa vào GameType
                 Color startingColor = DetermineStartingColor(record.GameType);
 
-                // Validate tất cả moves
-                if (!record.ValidateAllMoves(board, validator, startingColor))
-                {
+                // Dùng clone để validate, giữ board gốc sạch
+                IBoard boardForValidation = board.Clone();
+                if (!record.ValidateAllMoves(boardForValidation, validator, startingColor))
                     return false;
-                }
 
-                // Clear history và branch tracker
+                // Reset board gốc về initial position trước khi replay
+                // (cần có method Initialize/Reset trên IBoard, hoặc tạo lại board)
+                // Reset board về starting position
+                board.Reset();
                 historyMgr.Clear();
                 branchTracker.Reset();
 
-                // Replay từng move
                 Color currentColor = startingColor;
                 foreach (var move in record.Moves)
                 {
-                    // Thực hiện move trên board
-                    var command = new MoveCommand(board, move);
+                    // Resolve SAN → Move có From/To thực, dùng board ở state hiện tại
+                    if (!MoveParser.TryParse(move.San, board, currentColor, out Move resolvedMove))
+                        return false;
+
+                    var command = new MoveCommand(board, resolvedMove);
                     historyMgr.ExecuteCommand(command);
+                    branchTracker.AddMove(resolvedMove);
 
-                    // Thêm vào branch tracker
-                    branchTracker.AddMove(move);
-
-                    // Chuyển lượt
                     currentColor = currentColor == Color.White ? Color.Black : Color.White;
                 }
 

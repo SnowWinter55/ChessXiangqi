@@ -42,6 +42,8 @@ namespace ChessXiangqiSolution.Core.Interfaces
         /// <summary>Tạo bản sao (deep copy) của bàn cờ hiện tại.</summary>
         IBoard Clone();
 
+        IBoard Reset();
+
         /// <summary>Lấy tất cả các quân cờ trên bàn (dùng cho AI hoặc kiểm tra).</summary>
         IEnumerable<(Position Pos, IPiece Piece)> GetAllPieces();
 

@@ -9,8 +9,20 @@ namespace ChessXiangqiSolution.Modules.Notation
     /// </summary>
     public static class GameRecordsManager
     {
+        /// <summary>
+        /// Get the project root directory by navigating up from BaseDirectory
+        /// BaseDirectory: bin/Debug/net10.0 -> up 3 levels -> project root
+        /// </summary>
+        private static string GetProjectRootPath()
+        {
+            var baseDir = new System.IO.DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+            // Navigate up: net10.0 -> Debug -> bin -> project root
+            var projectRoot = baseDir.Parent?.Parent?.Parent;
+            return projectRoot?.FullName ?? AppDomain.CurrentDomain.BaseDirectory;
+        }
+
         private static readonly string GameRecordsPath = Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory, 
+            GetProjectRootPath(), 
             "GameRecords"
         );
 
@@ -131,6 +143,22 @@ namespace ChessXiangqiSolution.Modules.Notation
             catch
             {
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Save a game record as PGN format (for both Chess and Xiangqi)
+        /// </summary>
+        public static void SaveGameAsPgn(string filePath, MatchRecord record)
+        {
+            try
+            {
+                var notationExporter = new NotationExporter();
+                notationExporter.ExportToFile(filePath, record);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to save game as PGN: {ex.Message}", ex);
             }
         }
     }

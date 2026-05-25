@@ -1,0 +1,8 @@
+﻿[Event "Chess Game"]
+[Date "2026.05.24"]
+[White "Player 1"]
+[Black "Player 2"]
+[Result "*"]
+[TimeControl "900+10"]
+
+1. f3 e5 2. g4 Qh4

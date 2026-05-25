@@ -119,6 +119,16 @@ namespace ChessXiangqiSolution.Core.Models.Xiangqi
                 }
             }
         }
+        public IBoard Reset()
+        {
+            for (int row = 0; row < Rows; row++)
+                for (int col = 0; col < Cols; col++)
+                    _board[row, col] = null;
+            InitializeStandardPosition();
+            return this;
+        }
+
+
 
         public IEnumerable<(Position Pos, IPiece Piece)> GetPiecesByColor(Color color)
         {

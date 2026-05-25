@@ -8,7 +8,7 @@ using ChessXiangqiSolution.Core.Models.Common;
 namespace ChessXiangqiSolution.Modules.Notation
 {
     /// <summary>
-    /// Lưu trữ cấu trúc cây nước đi (branching) cho phép tạo các biến (variations)
+    /// Lưu trữ cấu trúc cây nước đi (branching) cho phép tạo các biến (variations).
     /// Hỗ trợ phân tích thế cờ, quay lui giữa các nhánh, và replay ván cờ.
     /// </summary>
     public class BranchTracker
@@ -18,8 +18,8 @@ namespace ChessXiangqiSolution.Modules.Notation
             public Move Move { get; set; }
             public Node Parent { get; set; }
             public List<Node> Children { get; set; } = new List<Node>();
-            public int VariationId { get; set; } // 0: main line, >0: sub-variation
-            public int MoveIndex { get; set; } // Chỉ số move trong main line
+            public int VariationId { get; set; }
+            public int MoveIndex { get; set; }
         }
 
         private Node _root;
@@ -50,11 +50,11 @@ namespace ChessXiangqiSolution.Modules.Notation
             }
             else
             {
-                var newNode = new Node 
-                { 
-                    Move = move, 
+                var newNode = new Node
+                {
+                    Move = move,
                     Parent = _currentNode,
-                    MoveIndex = _mainLine.Count // Chỉ số move hiện tại
+                    MoveIndex = _mainLine.Count
                 };
                 _currentNode.Children.Add(newNode);
                 _currentNode = newNode;
@@ -65,7 +65,7 @@ namespace ChessXiangqiSolution.Modules.Notation
                 _redoStack.Clear();
         }
 
-        /// <summary>Lùi về nước trước đó trong cùng nhánh (không sang nhánh phụ)</summary>
+        /// <summary>Lùi về nước trước đó trong cùng nhánh</summary>
         public bool GoBack()
         {
             if (_currentNode.Parent != null)
@@ -103,13 +103,13 @@ namespace ChessXiangqiSolution.Modules.Notation
             return new List<Move>(_mainLine);
         }
 
-        /// <summary>Lấy toàn bộ dãy nước đi main line từ gốc đến cuối</summary>
+        /// <summary>Lấy toàn bộ dãy nước đi main line</summary>
         public List<Move> GetMainLine()
         {
             return new List<Move>(_mainLine);
         }
 
-        /// <summary>Đặt nhánh hiện tại làm main line (variation 0)</summary>
+        /// <summary>Đặt nhánh hiện tại làm main line</summary>
         public void SetCurrentAsMainLine()
         {
             _mainLine = GetCurrentLine();
@@ -129,44 +129,39 @@ namespace ChessXiangqiSolution.Modules.Notation
         public void RebuildFromMoveList(List<Move> moves)
         {
             Reset();
-            
-            if (moves == null || moves.Count == 0)
-                return;
-
+            if (moves == null || moves.Count == 0) return;
             foreach (var move in moves)
-            {
                 AddMove(move);
-            }
         }
 
-        /// <summary>Đi tới move tại chỉ số cụ thể (0-based)</summary>
+        /// <summary>
+        /// Navigate đến move tại index dựa trên sourceMoves được truyền vào từ ngoài.
+        /// FIX Bug 1: không dùng _mainLine nội bộ vì Reset() đã clear nó trước.
+        /// </summary>
+        public void GoToMoveIndex(int index, List<Move> sourceMoves)
+        {
+            Reset();
+            if (index < 0 || sourceMoves == null || sourceMoves.Count == 0) return;
+
+            for (int i = 0; i <= index && i < sourceMoves.Count; i++)
+                AddMove(sourceMoves[i]);
+        }
+
+        /// <summary>
+        /// Overload không tham số sourceMoves — dùng _mainLine hiện tại.
+        /// Chỉ dùng khi _mainLine còn đúng (tức là TRƯỚC khi Reset).
+        /// </summary>
         public void GoToMoveIndex(int index)
         {
-            if (index < 0 || index >= _mainLine.Count)
-                return;
-
-            // Reset về root
-            Reset();
-
-            // Navigate đến move tại index
-            for (int i = 0; i <= index; i++)
-            {
-                if (i < _mainLine.Count)
-                {
-                    AddMove(_mainLine[i]);
-                }
-                else
-                {
-                    break;
-                }
-            }
+            // Snapshot _mainLine trước khi Reset xóa nó
+            var snapshot = new List<Move>(_mainLine);
+            GoToMoveIndex(index, snapshot);
         }
 
         /// <summary>Lấy nước đi tại chỉ số cụ thể (0-based)</summary>
         public Move GetMoveAtIndex(int index)
         {
-            if (index < 0 || index >= _mainLine.Count)
-                return null;
+            if (index < 0 || index >= _mainLine.Count) return null;
             return _mainLine[index];
         }
 
@@ -176,12 +171,11 @@ namespace ChessXiangqiSolution.Modules.Notation
         /// <summary>Lấy chỉ số move hiện tại (0-based)</summary>
         public int GetCurrentMoveIndex()
         {
-            if (_currentNode == null || _currentNode.Parent == null)
-                return -1;
+            if (_currentNode == null || _currentNode.Parent == null) return -1;
             return _currentNode.MoveIndex;
         }
 
-        /// <summary>Quay về root (bắt đầu ván)</summary>
+        /// <summary>Quay về root</summary>
         public void GoToStart()
         {
             _currentNode = _root;
@@ -192,7 +186,8 @@ namespace ChessXiangqiSolution.Modules.Notation
         /// <summary>Đi tới cuối ván</summary>
         public void GoToEnd()
         {
-            GoToMoveIndex(_mainLine.Count - 1);
+            var snapshot = new List<Move>(_mainLine);
+            GoToMoveIndex(snapshot.Count - 1, snapshot);
         }
 
         private bool MoveEquals(Move a, Move b)
@@ -225,10 +220,7 @@ namespace ChessXiangqiSolution.Modules.Notation
             return false;
         }
 
-        /// <summary>Kiểm tra xem có thể quay lui không</summary>
         public bool CanGoBack() => _currentNode.Parent != null;
-
-        /// <summary>Kiểm tra xem có thể quay trước không</summary>
         public bool CanGoForward() => _redoStack.Count > 0;
     }
 }
